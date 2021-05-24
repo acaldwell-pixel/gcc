@@ -1,11 +1,11 @@
 
 
 /* Useful if you wish to make target-specific GCC changes. */
-#undef TARGET_ASTRAEA
-#define TARGET_ASTRAEA 1
+#undef TARGET_ASTRAEAOS
+#define TARGET_ASTRAEAOS 1
  
 /* Default arguments you want when running your
-   i686-astraea-gcc/x86_64-astraea-gcc toolchain */
+   i686-astraeaos-gcc/x86_64-astraeaos-gcc toolchain */
 #undef LIB_SPEC
 #define LIB_SPEC "-lc" /* link against C standard library */
  
@@ -22,9 +22,9 @@
 #undef TARGET_OS_CPP_BUILTINS
 #define TARGET_OS_CPP_BUILTINS()      \
   do {                                \
-    builtin_define ("__astraea__");      \
+    builtin_define ("__astraeaos__");      \
     builtin_define ("__unix__");      \
-    builtin_assert ("system=astraea");   \
+    builtin_assert ("system=astraeaos");   \
     builtin_assert ("system=unix");   \
     builtin_assert ("system=posix");   \
   } while(0);
