@@ -8,9 +8,12 @@
    i686-astraeaos-gcc/x86_64-astraeaos-gcc toolchain */
 #undef LIB_SPEC
 #define LIB_SPEC "-lc" /* link against C standard library */
- 
+
 /* Files that are linked before user code.
    The %s tells GCC to look for these files in the library directory. */
+#undef STANDARD_STARTFILE_PREFIX
+#define STANDARD_STARTFILE_PREFIX "/lib/"
+
 #undef STARTFILE_SPEC
 #define STARTFILE_SPEC "crt0.o%s crti.o%s crtbegin.o%s"
  
