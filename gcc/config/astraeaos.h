@@ -7,7 +7,7 @@
 /* Default arguments you want when running your
    i686-astraeaos-gcc/x86_64-astraeaos-gcc toolchain */
 #undef LIB_SPEC
-#define LIB_SPEC "-lc" /* link against C standard library */
+#define LIB_SPEC "-lc -lg -lm -lnosys" /* link against C standard library */
 
 #undef LINK_SPEC
 #define LINK_SPEC "%{shared:-shared} %{static:-static} %{!shared: %{!static: %{rdynamic:-export-dynamic}}}"
