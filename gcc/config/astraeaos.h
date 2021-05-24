@@ -9,6 +9,9 @@
 #undef LIB_SPEC
 #define LIB_SPEC "-lc" /* link against C standard library */
 
+#undef LINK_SPEC
+#define LINK_SPEC "%{shared:-shared} %{static:-static} %{!shared: %{!static: %{rdynamic:-export-dynamic}}}"
+
 /* Files that are linked before user code.
    The %s tells GCC to look for these files in the library directory. */
 #undef STANDARD_STARTFILE_PREFIX
