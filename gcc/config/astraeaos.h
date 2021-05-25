@@ -18,7 +18,7 @@
 #define STANDARD_STARTFILE_PREFIX "/lib/"
 
 #undef STARTFILE_SPEC
-#define STARTFILE_SPEC "crt0.o%s crti.o%s crtbegin.o%s"
+#define STARTFILE_SPEC "crt1.o%s crti.o%s crtbegin.o%s"
  
 /* Files that are linked after user code. */
 #undef ENDFILE_SPEC
