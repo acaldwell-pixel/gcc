@@ -1,3 +1,71 @@
+2021-05-27  Matthias Kretz  <kretz@kde.org>
+
+	PR c++/100716
+	* error.c (dump_template_bindings): Include code to print
+	"[with" and ']', conditional on whether anything is printed at
+	all. This is tied to whether a semicolon is needed to separate
+	multiple template parameters. If the template argument repeats
+	the template parameter (T = T), then skip the parameter.
+	(dump_substitution): Moved code to print "[with" and ']' to
+	dump_template_bindings.
+	(dump_function_decl): Partial revert of PR50828, which masked
+	TFF_TEMPLATE_NAME for all of dump_function_decl. Now
+	TFF_TEMPLATE_NAME is masked for the scope of the function and
+	only carries through to dump_function_name.
+	(dump_function_name): Avoid calling dump_template_parms if
+	TFF_TEMPLATE_NAME is set.
+
+2021-05-27  Matthias Kretz  <kretz@kde.org>
+
+	PR c++/100763
+	* error.c: Call dump_scope when printing a typedef.
+
+2021-05-27  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/99893
+	* tree.c (cp_walk_subtrees) <case STATIC_ASSERT>: New case.
+
+2021-05-27  Jason Merrill  <jason@redhat.com>
+
+	PR c++/86355
+	* pt.c (use_pack_expansion_extra_args_p): Don't compare
+	args from the same argument pack.
+
+2021-05-27  Patrick Palka  <ppalka@redhat.com>
+
+	DR 1315
+	PR c++/67593
+	PR c++/96555
+	* pt.c (process_partial_specialization): Don't error on a
+	non-simple non-type template argument that involves template
+	parameters.
+	(for_each_template_parm_r): Don't walk TRAIT_EXPR, PLUS_EXPR,
+	MULT_EXPR, or SCOPE_REF when include_nondeduced_p is false.
+
+2021-05-26  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/100502
+	* typeck.c (finish_class_member_access_expr): Disable ahead
+	of time access checking during the member lookup.
+
+2021-05-26  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/100368
+	* tree.c (build_target_expr_with_type): Don't call force_rvalue
+	on CALL_EXPR initializer.  Simplify now that bot_manip is no
+	longer a caller.
+	(bot_manip): Use force_target_expr instead of
+	build_target_expr_with_type.
+
+2021-05-26  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/97420
+	* cvt.c (noexcept_conv_p): Remove redundant checks and simplify.
+	(fnptr_conv_p): Don't call non_reference.  Use INDIRECT_TYPE_P
+	instead of TYPE_PTR_P.
+	* pt.c (convert_nontype_argument_function): Look through
+	implicit INDIRECT_REFs before calling strip_fnptr_conv.
+
 2021-05-25  Jakub Jelinek  <jakub@redhat.com>
 
 	PR c++/100666
