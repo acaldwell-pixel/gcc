@@ -663,11 +663,17 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
     (with
      {
        bool overflowed = true;
-       wide_int wmin0, wmax0, wmin1, wmax1;
+       value_range vr0, vr1;
        if (INTEGRAL_TYPE_P (type)
-	   && get_range_info (@0, &wmin0, &wmax0) == VR_RANGE
-	   && get_range_info (@1, &wmin1, &wmax1) == VR_RANGE)
+	   && get_global_range_query ()->range_of_expr (vr0, @0)
+	   && get_global_range_query ()->range_of_expr (vr1, @1)
+	   && vr0.kind () == VR_RANGE
+	   && vr1.kind () == VR_RANGE)
 	 {
+	   wide_int wmin0 = vr0.lower_bound ();
+	   wide_int wmax0 = vr0.upper_bound ();
+	   wide_int wmin1 = vr1.lower_bound ();
+	   wide_int wmax1 = vr1.upper_bound ();
 	   /* If the multiplication can't overflow/wrap around, then
 	      it can be optimized too.  */
 	   wi::overflow_type min_ovf, max_ovf;
@@ -2509,9 +2515,12 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
 	  = wide_int::from (wi::to_wide (@1), TYPE_PRECISION (inner_type),
 			    TYPE_SIGN (inner_type));
 
-        wide_int wmin0, wmax0;
-        if (get_range_info (@0, &wmin0, &wmax0) == VR_RANGE)
+	value_range vr;
+	if (get_global_range_query ()->range_of_expr (vr, @0)
+	    && vr.kind () == VR_RANGE)
           {
+	    wide_int wmin0 = vr.lower_bound ();
+	    wide_int wmax0 = vr.upper_bound ();
             wi::add (wmin0, w1, TYPE_SIGN (inner_type), &min_ovf);
             wi::add (wmax0, w1, TYPE_SIGN (inner_type), &max_ovf);
           }
@@ -6633,10 +6642,31 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
 	&& tree_to_uhwi (@3) == c2
 	&& tree_to_uhwi (@9) == c3
 	&& tree_to_uhwi (@7) == c3
-	&& tree_to_uhwi (@11) == c4
-	&& direct_internal_fn_supported_p (IFN_POPCOUNT, type,
-					   OPTIMIZE_FOR_BOTH))
-    (convert (IFN_POPCOUNT:type @0)))))
+	&& tree_to_uhwi (@11) == c4)
+    (if (direct_internal_fn_supported_p (IFN_POPCOUNT, type,
+					 OPTIMIZE_FOR_BOTH))
+     (convert (IFN_POPCOUNT:type @0))
+     /* Try to do popcount in two halves.  PREC must be at least
+	five bits for this to work without extension before adding.  */
+     (with {
+       tree half_type = NULL_TREE;
+       opt_machine_mode m = mode_for_size ((prec + 1) / 2, MODE_INT, 1);
+       int half_prec = 8;
+       if (m.exists ()
+	   && m.require () != TYPE_MODE (type))
+	 {
+	   half_prec = GET_MODE_PRECISION (as_a <scalar_int_mode> (m));
+	   half_type = build_nonstandard_integer_type (half_prec, 1);
+	 }
+       gcc_assert (half_prec > 2);
+      }
+      (if (half_type != NULL_TREE
+	   && direct_internal_fn_supported_p (IFN_POPCOUNT, half_type,
+					      OPTIMIZE_FOR_BOTH))
+       (convert (plus
+	 (IFN_POPCOUNT:half_type (convert @0))
+	 (IFN_POPCOUNT:half_type (convert (rshift @0
+	    { build_int_cst (integer_type_node, half_prec); } )))))))))))
 
 /* __builtin_ffs needs to deal on many targets with the possible zero
    argument.  If we know the argument is always non-zero, __builtin_ctz + 1
