@@ -5247,7 +5247,7 @@ vect_create_epilog_for_reduction (loop_vec_info loop_vinfo,
       gcc_assert (STMT_VINFO_RELATED_STMT (orig_stmt_info) == stmt_info);
     }
   
-  scalar_dest = gimple_assign_lhs (orig_stmt_info->stmt);
+  scalar_dest = gimple_get_lhs (orig_stmt_info->stmt);
   scalar_type = TREE_TYPE (scalar_dest);
   scalar_results.create (group_size); 
   new_scalar_dest = vect_create_destination_var (scalar_dest, NULL);
@@ -9740,12 +9740,31 @@ vect_transform_loop (loop_vec_info loop_vinfo, gimple *loop_vectorized_call)
   /* In these calculations the "- 1" converts loop iteration counts
      back to latch counts.  */
   if (loop->any_upper_bound)
-    loop->nb_iterations_upper_bound
-      = (final_iter_may_be_partial
-	 ? wi::udiv_ceil (loop->nb_iterations_upper_bound + bias_for_lowest,
-			  lowest_vf) - 1
-	 : wi::udiv_floor (loop->nb_iterations_upper_bound + bias_for_lowest,
-			   lowest_vf) - 1);
+    {
+      loop_vec_info main_vinfo = LOOP_VINFO_ORIG_LOOP_INFO (loop_vinfo);
+      loop->nb_iterations_upper_bound
+	= (final_iter_may_be_partial
+	   ? wi::udiv_ceil (loop->nb_iterations_upper_bound + bias_for_lowest,
+			    lowest_vf) - 1
+	   : wi::udiv_floor (loop->nb_iterations_upper_bound + bias_for_lowest,
+			     lowest_vf) - 1);
+      if (main_vinfo)
+	{
+	  unsigned int bound;
+	  poly_uint64 main_iters
+	    = upper_bound (LOOP_VINFO_VECT_FACTOR (main_vinfo),
+			   LOOP_VINFO_COST_MODEL_THRESHOLD (main_vinfo));
+	  main_iters
+	    = upper_bound (main_iters,
+			   LOOP_VINFO_VERSIONING_THRESHOLD (main_vinfo));
+	  if (can_div_away_from_zero_p (main_iters,
+					LOOP_VINFO_VECT_FACTOR (loop_vinfo),
+					&bound))
+	    loop->nb_iterations_upper_bound
+	      = wi::umin ((widest_int) (bound - 1),
+			  loop->nb_iterations_upper_bound);
+      }
+  }
   if (loop->any_likely_upper_bound)
     loop->nb_iterations_likely_upper_bound
       = (final_iter_may_be_partial

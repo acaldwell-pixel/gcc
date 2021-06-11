@@ -854,6 +854,8 @@ case ${target} in
   tmake_file="${tmake_file} t-glibc"
   target_has_targetcm=yes
   target_has_targetdm=yes
+  # Linux targets always support .init_array.
+  gcc_cv_initfini_array=yes
   ;;
 *-*-netbsd*)
   tm_p_file="${tm_p_file} netbsd-protos.h"
@@ -4620,14 +4622,7 @@ case "${target}" in
 			tm_defines="${tm_defines} TARGET_RISCV_ATTRIBUTE=0"
 			;;
 		""|default)
-			case "${target}" in
-			riscv*-*-elf*)
-				tm_defines="${tm_defines} TARGET_RISCV_ATTRIBUTE=1"
-				;;
-			*)
-				tm_defines="${tm_defines} TARGET_RISCV_ATTRIBUTE=0"
-				;;
-			esac
+			tm_defines="${tm_defines} TARGET_RISCV_ATTRIBUTE=1"
 			;;
 		*)
 			echo "--with-riscv-attribute=${with_riscv_attribute} is not supported.  The argument must begin with yes, no or default." 1>&2

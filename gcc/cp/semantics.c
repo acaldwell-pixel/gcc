@@ -927,6 +927,71 @@ is_std_constant_evaluated_p (tree fn)
   return name && id_equal (name, "is_constant_evaluated");
 }
 
+/* Callback function for maybe_warn_for_constant_evaluated that looks
+   for calls to std::is_constant_evaluated in TP.  */
+
+static tree
+find_std_constant_evaluated_r (tree *tp, int *walk_subtrees, void *)
+{
+  tree t = *tp;
+
+  if (TYPE_P (t) || TREE_CONSTANT (t))
+    {
+      *walk_subtrees = false;
+      return NULL_TREE;
+    }
+
+  switch (TREE_CODE (t))
+    {
+    case CALL_EXPR:
+      if (is_std_constant_evaluated_p (t))
+	return t;
+      break;
+    case EXPR_STMT:
+      /* Don't warn in statement expressions.  */
+      *walk_subtrees = false;
+      return NULL_TREE;
+    default:
+      break;
+    }
+
+  return NULL_TREE;
+}
+
+/* In certain contexts, std::is_constant_evaluated() is always true (for
+   instance, in a consteval function or in a constexpr if), or always false
+   (e.g., in a non-constexpr non-consteval function) so give the user a clue.  */
+
+static void
+maybe_warn_for_constant_evaluated (tree cond, bool constexpr_if)
+{
+  if (!warn_tautological_compare)
+    return;
+
+  /* Suppress warning for std::is_constant_evaluated if the conditional
+     comes from a macro.  */
+  if (from_macro_expansion_at (EXPR_LOCATION (cond)))
+    return;
+
+  cond = cp_walk_tree_without_duplicates (&cond, find_std_constant_evaluated_r,
+					  NULL);
+  if (cond)
+    {
+      if (constexpr_if)
+	warning_at (EXPR_LOCATION (cond), OPT_Wtautological_compare,
+		    "%<std::is_constant_evaluated%> always evaluates to "
+		    "true in %<if constexpr%>");
+      else if (!maybe_constexpr_fn (current_function_decl))
+	warning_at (EXPR_LOCATION (cond), OPT_Wtautological_compare,
+		    "%<std::is_constant_evaluated%> always evaluates to "
+		    "false in a non-%<constexpr%> function");
+      else if (DECL_IMMEDIATE_FUNCTION_P (current_function_decl))
+	warning_at (EXPR_LOCATION (cond), OPT_Wtautological_compare,
+		    "%<std::is_constant_evaluated%> always evaluates to "
+		    "true in a %<consteval%> function");
+    }
+}
+
 /* Process the COND of an if-statement, which may be given by
    IF_STMT.  */
 
@@ -942,23 +1007,12 @@ finish_if_stmt_cond (tree cond, tree if_stmt)
 	 converted to bool.  */
       && TYPE_MAIN_VARIANT (TREE_TYPE (cond)) == boolean_type_node)
     {
-      /* if constexpr (std::is_constant_evaluated()) is always true,
-	 so give the user a clue.  */
-      if (warn_tautological_compare)
-	{
-	  tree t = cond;
-	  if (TREE_CODE (t) == CLEANUP_POINT_EXPR)
-	    t = TREE_OPERAND (t, 0);
-	  if (TREE_CODE (t) == CALL_EXPR
-	      && is_std_constant_evaluated_p (t))
-	    warning_at (EXPR_LOCATION (cond), OPT_Wtautological_compare,
-			"%qs always evaluates to true in %<if constexpr%>",
-			"std::is_constant_evaluated");
-	}
-
+      maybe_warn_for_constant_evaluated (cond, /*constexpr_if=*/true);
       cond = instantiate_non_dependent_expr (cond);
       cond = cxx_constant_value (cond, NULL_TREE);
     }
+  else
+    maybe_warn_for_constant_evaluated (cond, /*constexpr_if=*/false);
   finish_cond (&IF_COND (if_stmt), cond);
   add_stmt (if_stmt);
   THEN_CLAUSE (if_stmt) = push_stmt_list ();
@@ -3663,8 +3717,10 @@ baselink_for_fns (tree fns)
   cl = currently_open_derived_class (scope);
   if (!cl)
     cl = scope;
-  cl = TYPE_BINFO (cl);
-  return build_baselink (cl, cl, fns, /*optype=*/NULL_TREE);
+  tree access_path = TYPE_BINFO (cl);
+  tree conv_path = (cl == scope ? access_path
+		    : lookup_base (cl, scope, ba_any, NULL, tf_none));
+  return build_baselink (conv_path, access_path, fns, /*optype=*/NULL_TREE);
 }
 
 /* Returns true iff DECL is a variable from a function outside
@@ -4968,7 +5024,11 @@ handle_omp_array_sections_1 (tree c, tree t, vec<tree> &types,
 	  if (REFERENCE_REF_P (t))
 	    t = TREE_OPERAND (t, 0);
 	}
-      if (!VAR_P (t) && TREE_CODE (t) != PARM_DECL)
+      if (TREE_CODE (t) == FIELD_DECL
+	  && (OMP_CLAUSE_CODE (c) == OMP_CLAUSE_AFFINITY
+	      || OMP_CLAUSE_CODE (c) == OMP_CLAUSE_DEPEND))
+	ret = finish_non_static_data_member (t, NULL_TREE, NULL_TREE);
+      else if (!VAR_P (t) && TREE_CODE (t) != PARM_DECL)
 	{
 	  if (processing_template_decl && TREE_CODE (t) != OVERLOAD)
 	    return NULL_TREE;
@@ -4985,7 +5045,9 @@ handle_omp_array_sections_1 (tree c, tree t, vec<tree> &types,
       else if (ort == C_ORT_OMP
 	       && TREE_CODE (t) == PARM_DECL
 	       && DECL_ARTIFICIAL (t)
-	       && DECL_NAME (t) == this_identifier)
+	       && DECL_NAME (t) == this_identifier
+	       && OMP_CLAUSE_CODE (c) != OMP_CLAUSE_AFFINITY
+	       && OMP_CLAUSE_CODE (c) != OMP_CLAUSE_DEPEND)
 	{
 	  error_at (OMP_CLAUSE_LOCATION (c),
 		    "%<this%> allowed in OpenMP only in %<declare simd%>"
@@ -7468,7 +7530,6 @@ finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
 	    }
 	  goto handle_field_decl;
 
-	case OMP_CLAUSE_AFFINITY:
 	case OMP_CLAUSE_DEPEND:
 	  t = OMP_CLAUSE_DECL (c);
 	  if (t == NULL_TREE)
@@ -7477,13 +7538,15 @@ finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
 			  == OMP_CLAUSE_DEPEND_SOURCE);
 	      break;
 	    }
-	  if (OMP_CLAUSE_CODE (c) == OMP_CLAUSE_DEPEND
-	      && OMP_CLAUSE_DEPEND_KIND (c) == OMP_CLAUSE_DEPEND_SINK)
+	  if (OMP_CLAUSE_DEPEND_KIND (c) == OMP_CLAUSE_DEPEND_SINK)
 	    {
 	      if (cp_finish_omp_clause_depend_sink (c))
 		remove = true;
 	      break;
 	    }
+	  /* FALLTHRU */
+	case OMP_CLAUSE_AFFINITY:
+	  t = OMP_CLAUSE_DECL (c);
 	  if (TREE_CODE (t) == TREE_LIST
 	      && TREE_PURPOSE (t)
 	      && TREE_CODE (TREE_PURPOSE (t)) == TREE_VEC)
@@ -7516,13 +7579,6 @@ finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
 	    }
 	  if (t == error_mark_node)
 	    remove = true;
-	  else if (ort != C_ORT_ACC && t == current_class_ptr)
-	    {
-	      error_at (OMP_CLAUSE_LOCATION (c),
-			"%<this%> allowed in OpenMP only in %<declare simd%>"
-			" clauses");
-	      remove = true;
-	    }
 	  else if (processing_template_decl && TREE_CODE (t) != OVERLOAD)
 	    break;
 	  else if (!lvalue_p (t))
@@ -7543,11 +7599,9 @@ finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
 		   && TREE_CODE (TREE_OPERAND (t, 1)) == FIELD_DECL
 		   && DECL_BIT_FIELD (TREE_OPERAND (t, 1)))
 	    {
-	      gcc_assert (OMP_CLAUSE_CODE (c) == OMP_CLAUSE_DEPEND
-			  || OMP_CLAUSE_CODE (c) == OMP_CLAUSE_AFFINITY);
 	      error_at (OMP_CLAUSE_LOCATION (c),
 			"bit-field %qE in %qs clause", t,
-			  omp_clause_code_name[OMP_CLAUSE_CODE (c)]);
+			omp_clause_code_name[OMP_CLAUSE_CODE (c)]);
 	      remove = true;
 	    }
 	  else if (OMP_CLAUSE_CODE (c) == OMP_CLAUSE_DEPEND

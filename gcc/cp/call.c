@@ -4110,7 +4110,7 @@ build_user_type_conversion_1 (tree totype, tree expr, int flags,
 	{
 	  cand->second_conv = build_identity_conv (totype, NULL_TREE);
 
-	  /* If totype isn't a reference, and LOOKUP_NO_TEMP_BIND isn't
+	  /* If totype isn't a reference, and LOOKUP_ONLYCONVERTING is
 	     set, then this is copy-initialization.  In that case, "The
 	     result of the call is then used to direct-initialize the
 	     object that is the destination of the copy-initialization."
@@ -4119,6 +4119,8 @@ build_user_type_conversion_1 (tree totype, tree expr, int flags,
 	     We represent this in the conversion sequence with an
 	     rvalue conversion, which means a constructor call.  */
 	  if (!TYPE_REF_P (totype)
+	      && cxx_dialect < cxx17
+	      && (flags & LOOKUP_ONLYCONVERTING)
 	      && !(convflags & LOOKUP_NO_TEMP_BIND))
 	    cand->second_conv
 	      = build_conv (ck_rvalue, totype, cand->second_conv);
@@ -5878,6 +5880,9 @@ perfect_conversion_p (conversion *conv)
 			next_conversion (conv)->type))
 	return false;
     }
+  if (conv->check_narrowing)
+    /* Brace elision is imperfect.  */
+    return false;
   return true;
 }
 
@@ -7206,8 +7211,10 @@ build_op_delete_call (enum tree_code code, tree addr, tree size,
 	 treat that as an implicit delete-expression.  This is also called for
 	 the delete if the constructor throws in a new-expression, and for a
 	 deleting destructor (which implements a delete-expression).  */
+      /* But leave this flag off for destroying delete to avoid wrong
+	 assumptions in the optimizers.  */
       tree call = extract_call_expr (ret);
-      if (TREE_CODE (call) == CALL_EXPR)
+      if (TREE_CODE (call) == CALL_EXPR && !destroying_delete_p (fn))
 	CALL_FROM_NEW_OR_DELETE_P (call) = 1;
 
       return ret;
@@ -7798,7 +7805,7 @@ convert_like_internal (conversion *convs, tree expr, tree fn, int argnum,
   expr = convert_like (next_conversion (convs), expr, fn, argnum,
 		       convs->kind == ck_ref_bind
 		       ? issue_conversion_warnings : false,
-		       c_cast_p, complain);
+		       c_cast_p, complain & ~tf_no_cleanup);
   if (expr == error_mark_node)
     return error_mark_node;
 
@@ -8833,6 +8840,7 @@ immediate_invocation_p (tree fn, int nargs)
 	      || !DECL_IMMEDIATE_FUNCTION_P (current_function_decl))
 	  && (current_binding_level->kind != sk_function_parms
 	      || !current_binding_level->immediate_fn_ctx_p)
+	  && !in_consteval_if_p
 	  /* As an exception, we defer std::source_location::current ()
 	     invocations until genericization because LWG3396 mandates
 	     special behavior for it.  */

@@ -1,3 +1,236 @@
+2021-06-09  Thomas Rodgers  <rodgert@appliantology.com>
+
+	* testsuite/29_atomics/atomic_ref/wait_notify.cc: Guard
+	test logic with constexpr check for is_always_lock_free.
+
+2021-06-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/100982
+	* include/std/optional (optional::operator=(const optional<U>&)):
+	Fix value category used in is_assignable check.
+	* testsuite/20_util/optional/assignment/100982.cc: New test.
+
+2021-06-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/bits/allocator.h (allocator::is_always_equal): Deprecate.
+	* include/bits/iterator_concepts.h (indirectly_readable_traits):
+	Add LWG issue number to comment.
+	* include/std/memory_resource (polymorphic_allocator::release):
+	Deprecate.
+	* testsuite/20_util/allocator/requirements/typedefs.cc: Add
+	dg-warning for deprecation. Also check std::allocator<void>.
+
+2021-06-08  Thomas Rodgers  <rodgert@appliantology.com>
+
+	PR libstdc++/100889
+	* include/bits/atomic_base.h (atomic_ref<_Tp*>::wait):
+	Change parameter type from _Tp to _Tp*.
+	* testsuite/29_atomics/atomic_ref/wait_notify.cc: Extend
+	coverage of types tested.
+
+2021-06-08  Thomas Rodgers  <rodgert@appliantology.com>
+
+	* include/std/barrier (__tree_barrier::_M_arrive): Remove
+	unnecessary hasher instantiation.
+
+2021-06-08  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/experimental/propagate_const (swap): Constrain.
+	* testsuite/experimental/propagate_const/swap/lwg3413.cc: New test.
+
+2021-06-07  Avi Kivity  <avi@scylladb.com>
+
+	PR libstdc++/100900
+	* include/std/ranges (elements_view::__iter_cat::_S_iter_cat):
+	Add missing typename.
+
+2021-06-07  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/98842
+	* include/std/optional (operator<=>(const optional<T>& const U&)):
+	Add missing constraint and add workaround for template
+	recursion.
+	* testsuite/20_util/optional/relops/three_way.cc: Check that
+	type without equality comparison cannot be compared when wrapped
+	in std::optional.
+
+2021-06-05  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/100824
+	* include/bits/ranges_base.h (_SSize): Return signed type.
+	* testsuite/std/ranges/access/ssize.cc: Check with __int128.
+
+2021-06-04  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/bits/ranges_base.h (_SSize): Return the result of
+	ranges::size converted to the wider of make-signed-like-t<S> and
+	ptrdiff_t, rather than the ranges different type.
+	* testsuite/std/ranges/access/ssize.cc: Adjust expected result
+	for an iota_view that uses an integer class type for its
+	difference_type.
+
+2021-06-04  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/100824
+	* include/bits/ranges_base.h (__member_data): Use __decay_copy.
+	* testsuite/std/ranges/access/data.cc: Add testcase from PR.
+
+2021-06-04  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/100824
+	* include/bits/iterator_concepts.h (__detail::__decay_copy)
+	(__detail::__member_begin, __detail::__adl_begin): Move to
+	namespace ranges::__cust_access.
+	(__detail::__ranges_begin): Likewise, and rename to __begin.
+	Remove redundant static assertion.
+	* include/bits/ranges_base.h (_Begin, _End, _RBegin, _REnd):
+	Use lvalue in noexcept specifier.
+	(__as_const): Add non-deduced parameter for value category.
+	(_CBegin, _CEnd, _CRBegin, _CREnd, _CData): Adjust uses of
+	__as_const.
+	(__member_size, __adl_size, __member_empty, __size0_empty):
+	(__eq_iter_empty, __adl_data): Use lvalue objects in
+	requirements.
+	(__sentinel_size): Likewise. Add check for conversion to
+	unsigned-like.
+	(__member_data): Allow non-lvalue types to satisfy the concept,
+	but use lvalue object in requirements.
+	(_Size, _SSize): Remove forwarding to always use an lvalue.
+	(_Data): Likewise. Add static assertion for arrays.
+	* testsuite/std/ranges/access/cdata.cc: Adjust expected
+	behaviour for rvalues. Add negative tests for ill-formed
+	expressions.
+	* testsuite/std/ranges/access/data.cc: Likewise.
+	* testsuite/std/ranges/access/empty.cc: Adjust expected
+	behaviour for rvalues.
+	* testsuite/std/ranges/access/size.cc: Likewise.
+
+2021-06-04  Tim Adye  <Tim.Adye@cern.ch>
+
+	* include/std/any (any::_Manager::_S_access): New static
+	function to access the contained value.
+	(any::emplace, __any_caster): Use _S_access member of the
+	manager type.
+
+2021-06-04  Jonathan Wakely  <jwakely@redhat.com>
+
+	* doc/xml/manual/status_cxx2020.xml:
+	* doc/html/*: Regenerate.
+	* include/bits/hashtable.h (__cpp_lib_generic_unordered_lookup):
+	Define.
+	* include/std/version (__cpp_lib_generic_unordered_lookup):
+	Define.
+	* testsuite/23_containers/unordered_map/operations/1.cc: Check
+	feature test macro.
+	* testsuite/23_containers/unordered_set/operations/1.cc:
+	Likewise.
+
+2021-06-03  Patrick Palka  <ppalka@redhat.com>
+
+	* include/bits/ranges_algo.h (__detail::__can_reread_output):
+	Factor out this concept from ...
+	(__unique_copy_fn::operator()): ... here.  Use the concept
+	throughout.
+	* testsuite/std/ranges/range.cc: Remove now ill-formed use
+	of range_value_t on an output_range.
+	* testsuite/util/testsuite_iterators.h (output_iterator_wrapper):
+	Define value_type, pointer and reference member types to void.
+
+2021-06-03  Patrick Palka  <ppalka@redhat.com>
+
+	PR libstdc++/100577
+	* include/std/ranges (_RangeAdaptorClosure): Document
+	_S_has_simple_call_op mechanism.
+	(_RangeAdaptor): Document _S_has_simple_extra_args mechanism.
+	(__closure_has_simple_call_op): New concept.
+	(__adaptor_has_simple_extra_args): Likewise.
+	(_Partial<_Adaptor, _Args...>): New partial specialization.
+	(_Partial<_Adaptor, _Arg>): Likewise.
+	(_Pipe<_Lhs, _Rhs>): Likewise.
+	(views::_All::_S_has_simple_call_op): Define to true.
+	(views::_Filter::_S_has_simple_extra_args): Likewise.
+	(views::_Transform::_S_has_simple_extra_args): Likewise.
+	(views::_Take::_S_has_simple_extra_args): Likewise.
+	(views::_TakeWhile::_S_has_simple_extra_args): Likewise.
+	(views::_Drop::_S_has_simple_extra_args): Likewise.
+	(views::_DropWhile::_S_has_simple_extra_args): Likewise.
+	(views::_Join::_S_has_simple_call_op): Likewise.
+	(views::_Split): Document why we don't define
+	_S_has_simple_extra_args to true for this adaptor.
+	(views::_Common::_S_has_simple_call_op): Define to true.
+	(views::_Reverse::_S_has_simple_call_op): Likewise.
+	(views::_Elements::_S_has_simple_call_op): Likewise.
+	* testsuite/std/ranges/adaptors/100577.cc: New test.
+
+2021-06-02  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/100863
+	PR libstdc++/65816
+	* include/bits/hashtable_policy.h (_Hashtable_ebo_helper):
+	Value-initialize subobject.
+	* testsuite/23_containers/unordered_map/allocator/default_init.cc:
+	Remove XFAIL.
+	* testsuite/23_containers/unordered_set/allocator/default_init.cc:
+	Remove XFAIL.
+
+2021-06-02  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/96088
+	* testsuite/23_containers/unordered_map/96088.cc: Adjust
+	expected number of allocations.
+	* testsuite/23_containers/unordered_set/96088.cc: Likewise.
+
+2021-06-02  Jonathan Wakely  <jwakely@redhat.com>
+
+	* doc/xml/manual/status_cxxis29124.xml: Improve punctuation.
+	* doc/xml/manual/status_cxxtr1.xml: Likewise.
+	* doc/xml/manual/status_cxxtr24733.xml: Likewise.
+	* doc/html/*: Regenerate.
+
+2021-06-01  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/65816
+	* testsuite/23_containers/deque/allocator/default_init.cc,
+	testsuite/23_containers/forward_list/allocator/default_init.cc,
+	testsuite/23_containers/list/allocator/default_init.cc,
+	testsuite/23_containers/map/allocator/default_init.cc,
+	testsuite/23_containers/set/allocator/default_init.cc,
+	testsuite/23_containers/vector/allocator/default_init.cc,
+	testsuite/23_containers/vector/bool/allocator/default_init.cc:
+	Remove xfail.
+
+2021-06-01  Jonathan Wakely  <jwakely@redhat.com>
+
+	* testsuite/23_containers/unordered_map/96088.cc: Change
+	effective target to c++17.
+	* testsuite/23_containers/unordered_set/96088.cc: Likewise.
+
+2021-06-01  Jonathan Wakely  <jwakely@redhat.com>
+
+	* testsuite/22_locale/ctype/is/string/89728_neg.cc: Only test
+	isblank for C++11 and later.
+
+2021-06-01  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/100833
+	* include/bits/ranges_base.h (ranges::advance(iter, n, sentinel)):
+	Fix return value for no-op case.
+	* testsuite/24_iterators/range_operations/advance.cc: Test
+	return values of three-argument overload.
+
+2021-06-01  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/99453
+	* python/Makefile.am: Use archive name for printer hook if no
+	dynamic library name is available.
+	* python/Makefile.in: Regenerate.
+
+2021-05-30  Gerald Pfeifer  <gerald@pfeifer.com>
+
+	* doc/xml/manual/abi.xml: Remove dead reference to "Intel
+	Compilers for Linux: Compatibility with GNU Compilers" article.
+	* doc/html/manual/abi.html: Regenerate.
+
 2021-05-26  François Dumont  <fdumont@gcc.gnu.org>
 
 	* include/debug/formatter.h

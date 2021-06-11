@@ -57,7 +57,7 @@
 	  (match_operand:QI 2 "const_int_operand" "")]))]
   "h8300_operands_match_p (operands)"
   "#"
-  "reload_completed"
+  "&& reload_completed"
   [(parallel [(set (match_dup 0) (match_op_dup 3 [(match_dup 1) (match_dup 2)]))
 	      (clobber (reg:CC CC_REG))])])
 
@@ -107,7 +107,7 @@
 	  (match_operand:QI 2 "nonmemory_operand" "r P5>X")]))]
   ""
   "#"
-  "reload_completed"
+  "&& reload_completed"
   [(parallel [(set (match_dup 0) (match_op_dup 3 [(match_dup 1) (match_dup 2)]))
 	      (clobber (reg:CC CC_REG))])])
 
@@ -158,7 +158,7 @@
    (clobber (match_scratch:QI 4 "=X,&r"))]
   ""
   "#"
-  "reload_completed"
+  "&& reload_completed"
   [(parallel [(set (match_dup 0) (match_op_dup 3 [(match_dup 1) (match_dup 2)]))
 	      (clobber (match_dup 4))
 	      (clobber (reg:CC CC_REG))])])
@@ -175,7 +175,7 @@
   return output_a_shift (operands);
 }
   [(set (attr "length")
-	(symbol_ref "compute_a_shift_length (insn, operands)"))])
+	(symbol_ref "compute_a_shift_length (operands)"))])
 
 (define_insn_and_split "*shiftqi_noscratch"
   [(set (match_operand:QI 0 "register_operand" "=r,r")
@@ -186,7 +186,7 @@
     && !h8300_shift_needs_scratch_p (INTVAL (operands[2]), QImode,
 				     GET_CODE (operands[3])))"
   "#"
-  "reload_completed"
+  "&& reload_completed"
   [(parallel [(set (match_dup 0) (match_op_dup 3 [(match_dup 1) (match_dup 2)]))
 	      (clobber (reg:CC CC_REG))])])
 
@@ -203,7 +203,7 @@
   return output_a_shift (operands);
 }
   [(set (attr "length")
-	(symbol_ref "compute_a_shift_length (insn, operands)"))])
+	(symbol_ref "compute_a_shift_length (operands)"))])
 
 (define_insn_and_split "*shifthi"
   [(set (match_operand:HI 0 "register_operand" "=r,r")
@@ -213,7 +213,7 @@
    (clobber (match_scratch:QI 4 "=X,&r"))]
   ""
   "#"
-  "reload_completed"
+  "&& reload_completed"
   [(parallel [(set (match_dup 0) (match_op_dup 3 [(match_dup 1) (match_dup 2)]))
 	      (clobber (match_dup 4))
 	      (clobber (reg:CC CC_REG))])])
@@ -230,7 +230,7 @@
   return output_a_shift (operands);
 }
   [(set (attr "length")
-	(symbol_ref "compute_a_shift_length (insn, operands)"))])
+	(symbol_ref "compute_a_shift_length (operands)"))])
 
 (define_insn_and_split "*shifthi_noscratch"
   [(set (match_operand:HI 0 "register_operand" "=r,r")
@@ -241,7 +241,7 @@
     && !h8300_shift_needs_scratch_p (INTVAL (operands[2]), HImode,
 				     GET_CODE (operands[3])))"
   "#"
-  "reload_completed"
+  "&& reload_completed"
   [(parallel [(set (match_dup 0) (match_op_dup 3 [(match_dup 1) (match_dup 2)]))
 	      (clobber (reg:CC CC_REG))])])
 
@@ -258,7 +258,7 @@
   return output_a_shift (operands);
 }
   [(set (attr "length")
-	(symbol_ref "compute_a_shift_length (insn, operands)"))])
+	(symbol_ref "compute_a_shift_length (operands)"))])
 
 (define_insn_and_split "*shiftsi"
   [(set (match_operand:SI 0 "register_operand" "=r,r")
@@ -268,7 +268,7 @@
    (clobber (match_scratch:QI 4 "=X,&r"))]
   ""
   "#"
-  "reload_completed"
+  "&& reload_completed"
   [(parallel [(set (match_dup 0) (match_op_dup 3 [(match_dup 1) (match_dup 2)]))
 	      (clobber (match_dup 4))
 	      (clobber (reg:CC CC_REG))])])
@@ -285,7 +285,7 @@
   return output_a_shift (operands);
 }
   [(set (attr "length")
-	(symbol_ref "compute_a_shift_length (insn, operands)"))])
+	(symbol_ref "compute_a_shift_length (operands)"))])
 
 (define_insn_and_split "*shiftsi_noscratch"
   [(set (match_operand:SI 0 "register_operand" "=r,r")
@@ -296,7 +296,7 @@
     && !h8300_shift_needs_scratch_p (INTVAL (operands[2]), SImode,
 				     GET_CODE (operands[3])))"
   "#"
-  "reload_completed"
+  "&& reload_completed"
   [(parallel [(set (match_dup 0) (match_op_dup 3 [(match_dup 1) (match_dup 2)]))
 	      (clobber (reg:CC CC_REG))])])
 
@@ -313,7 +313,7 @@
   return output_a_shift (operands);
 }
   [(set (attr "length")
-	(symbol_ref "compute_a_shift_length (insn, operands)"))])
+	(symbol_ref "compute_a_shift_length (operands)"))])
 
 ;; Split a variable shift into a loop.  If the register containing
 ;; the shift count dies, then we just use that register.
@@ -410,7 +410,7 @@
 		     (match_operand:QI 2 "immediate_operand" "")))]
   ""
   "#"
-  "reload_completed"
+  "&& reload_completed"
   [(parallel [(set (match_dup 0) (rotate:QHSI (match_dup 1) (match_dup 2)))
 	      (clobber (reg:CC CC_REG))])])
 

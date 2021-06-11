@@ -1,3 +1,210 @@
+2021-06-11  Marek Polacek  <polacek@redhat.com>
+
+	PR c++/100995
+	* constexpr.c (maybe_constexpr_fn): New.
+	* cp-tree.h (maybe_constexpr_fn): Declare.
+	* semantics.c (find_std_constant_evaluated_r): New.
+	(maybe_warn_for_constant_evaluated): New.
+	(finish_if_stmt_cond): Call it.
+
+2021-06-10  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/67829
+	* pt.c (unify) <case BOUND_TEMPLATE_TEMPLATE_PARM>: When
+	the TEMPLATE_DECL of a BOUND_TEMPLATE_TEMPLATE_PARM argument is
+	a template template parameter, adjust to the
+	TEMPLATE_TEMPLATE_PARAMETER before falling through.
+
+2021-06-10  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/100946
+	* constraint.cc (normalize_placeholder_type_constraints): When
+	normalizing a non-templated return-type-requirement, add a dummy
+	level to initial_parms.
+
+2021-06-08  Marek Polacek  <polacek@redhat.com>
+
+	PR c++/100065
+	* decl.c (grokdeclarator): Store a value-dependent
+	explicit-specifier even for deduction guides.
+
+2021-06-08  Jason Merrill  <jason@redhat.com>
+
+	* parser.c (cp_parser_string_literal): Adjust diagnostic.
+
+2021-06-08  Jason Merrill  <jason@redhat.com>
+
+	PR c++/100963
+	* call.c (perfect_conversion_p): Check check_narrowing.
+
+2021-06-08  Jason Merrill  <jason@redhat.com>
+
+	PR c++/91706
+	* name-lookup.c (get_class_binding): Keep a BASELINK.
+	(set_inherited_value_binding_p): Adjust.
+	* lambda.c (is_lambda_ignored_entity): Adjust.
+	* pt.c (lookup_template_function): Copy a BASELINK before
+	modifying it.
+
+2021-06-08  Jason Merrill  <jason@redhat.com>
+
+	PR c++/91706
+	* semantics.c (baselink_for_fns): Fix BASELINK_BINFO.
+
+2021-06-08  Jason Merrill  <jason@redhat.com>
+
+	* module.cc (duplicate_hash::hash): Comment out.
+	(trees_in::tree_value): Adjust loop counter.
+
+2021-06-08  Jason Merrill  <jason@redhat.com>
+
+	PR c++/100102
+	* init.c (build_offset_ref): Return the BASELINK for a static
+	member function.
+
+2021-06-07  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/100918
+	* parser.c (cp_parser_lookup_name): Check access of the lookup
+	result before we potentially adjust an injected-class-name to
+	its TEMPLATE_DECL.
+
+2021-06-06  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/100902
+	* parser.c (cp_parser_omp_target): Call c_omp_adjust_map_clauses
+	even when target is combined with other constructs.
+
+2021-06-04  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/100893
+	* pt.c (convert_template_argument): Strip top-level cv-quals
+	on the substituted type of a non-type template parameter.
+
+2021-06-04  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/100102
+	* pt.c (tsubst_function_decl): Remove old code for reducing
+	args when it has excess levels.
+
+2021-06-04  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/100872
+	* name-lookup.c (maybe_save_operator_binding): Add op_attr after all
+	ATTR_IS_DEPENDENT attributes in the DECL_ATTRIBUTES list rather than
+	to the start.
+
+2021-06-03  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/100592
+	* decl.c (make_typename_type): After calling
+	lookup_template_class, adjust the result to its TYPE_NAME and
+	then consider the tf_keep_type_decl flag.
+
+2021-06-03  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/100862
+	* pt.c (set_current_access_from_decl): Move to ...
+	* class.c (set_current_access_from_decl): ... here.
+	(handle_using_decl): Use it to propagate the access of the
+	using-enum decl to the copy of the imported enumerator.
+	* cp-tree.h (set_current_access_from_decl): Declare.
+	* decl.c (build_enumerator): Simplify using make_temp_override
+	and set_current_access_from_decl.
+
+2021-06-03  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/100859
+	* semantics.c (handle_omp_array_sections_1): For
+	OMP_CLAUSE_{AFFINITY,DEPEND} handle FIELD_DECL base using
+	finish_non_static_data_member and allow this as base.
+	(finish_omp_clauses): Move OMP_CLAUSE_AFFINITY
+	after depend only cases.  Let this be diagnosed by !lvalue_p
+	case for OMP_CLAUSE_{AFFINITY,DEPEND} and remove useless
+	assert.
+	* pt.c (tsubst_omp_clauses): Handle OMP_CLAUSE_AFFINITY.
+
+2021-06-02  Jason Merrill  <jason@redhat.com>
+
+	PR c++/100838
+	* call.c (convert_like_internal): Clear tf_no_cleanup when
+	recursing.
+	(build_user_type_conversion_1): Only add ck_rvalue if
+	LOOKUP_ONLYCONVERTING.
+
+2021-06-01  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/65816
+	* init.c (expand_aggr_init_1): Check
+	type_has_non_user_provided_default_constructor instead of
+	type_has_user_provided_constructor.
+
+2021-06-01  Jason Merrill  <jason@redhat.com>
+
+	PR c++/91859
+	* call.c (build_op_delete_call): Don't set CALL_FROM_NEW_OR_DELETE_P
+	for destroying delete.
+	* init.c (build_delete): Don't clobber before destroying delete.
+
+2021-06-01  Jason Merrill  <jason@redhat.com>
+
+	PR c++/94492
+	* decl2.c (cp_warn_deprecated_use): Check warning_enabled_at.
+
+2021-05-31  Richard Biener  <rguenther@suse.de>
+
+	PR c++/88601
+	* cp-objcp-common.c (names_builtin_p): Handle
+	RID_BUILTIN_SHUFFLEVECTOR.
+	* cp-tree.h (build_x_shufflevector): Declare.
+	* parser.c (cp_parser_postfix_expression): Handle
+	RID_BUILTIN_SHUFFLEVECTOR.
+	* pt.c (tsubst_copy_and_build): Handle IFN_SHUFFLEVECTOR.
+	* typeck.c (build_x_shufflevector): Build either a lowered
+	VEC_PERM_EXPR or an unlowered shufflevector via a temporary
+	internal function IFN_SHUFFLEVECTOR.
+
+2021-05-28  Jason Merrill  <jason@redhat.com>
+
+	* constexpr.c (build_data_member_initialization): Use tsi_range.
+	(build_constexpr_constructor_member_initializers): Likewise.
+	(constexpr_fn_retval, cxx_eval_statement_list): Likewise.
+	(potential_constant_expression_1): Likewise.
+	* coroutines.cc (await_statement_expander): Likewise.
+	(await_statement_walker): Likewise.
+	* module.cc (trees_out::core_vals): Likewise.
+	* pt.c (tsubst_expr): Likewise.
+	* semantics.c (set_cleanup_locs): Likewise.
+
+2021-05-28  Jason Merrill  <jason@redhat.com>
+
+	PR c++/100797
+	PR c++/95719
+	* call.c (build_over_call): Adjust base_binfo in
+	resolves_to_fixed_type_p case.
+
+2021-05-28  Jakub Jelinek  <jakub@redhat.com>
+
+	PR middle-end/99928
+	* semantics.c (handle_omp_array_sections): Copy
+	OMP_CLAUSE_MAP_IMPLICIT.
+	(finish_omp_clauses): Move not just OMP_CLAUSE_FIRSTPRIVATE_IMPLICIT
+	marked clauses last, but also OMP_CLAUSE_MAP_IMPLICIT.  Add
+	map_firstprivate_head bitmap, set it for GOMP_MAP_FIRSTPRIVATE_POINTER
+	maps and silently remove OMP_CLAUSE_FIRSTPRIVATE_IMPLICIT if it is
+	present too.  For OMP_CLAUSE_MAP_IMPLICIT silently remove the clause
+	if present in map_head, map_field_head or map_firstprivate_head
+	bitmaps.
+
+2021-05-28  Tobias Burnus  <tobias@codesourcery.com>
+
+	* parser.c (cp_parser_omp_clause_affinity): New.
+	(cp_parser_omp_clause_name, cp_parser_omp_var_list_no_open,
+	cp_parser_omp_all_clauses, OMP_TASK_CLAUSE_MASK): Handle affinity
+	clause.
+	* semantics.c (handle_omp_array_sections_1, handle_omp_array_sections,
+	finish_omp_clauses): Likewise.
+
 2021-05-27  Matthias Kretz  <kretz@kde.org>
 
 	PR c++/100716

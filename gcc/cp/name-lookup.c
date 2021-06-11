@@ -5236,7 +5236,7 @@ set_inherited_value_binding_p (cxx_binding *binding, tree decl,
     {
       tree context;
 
-      if (TREE_CODE (decl) == OVERLOAD)
+      if (is_overloaded_fn (decl))
 	context = ovl_scope (decl);
       else
 	{
@@ -5337,28 +5337,6 @@ get_class_binding (tree name, cp_binding_level *scope)
   value_binding = lookup_member (class_type, name,
 				 /*protect=*/2, /*want_type=*/false,
 				 tf_warning_or_error);
-
-  if (value_binding
-      && (TREE_CODE (value_binding) == TYPE_DECL
-	  || DECL_CLASS_TEMPLATE_P (value_binding)
-	  || (TREE_CODE (value_binding) == TREE_LIST
-	      && TREE_TYPE (value_binding) == error_mark_node
-	      && (TREE_CODE (TREE_VALUE (value_binding))
-		  == TYPE_DECL))))
-    /* We found a type binding, even when looking for a non-type
-       binding.  This means that we already processed this binding
-       above.  */
-    ;
-  else if (value_binding)
-    {
-      if (TREE_CODE (value_binding) == TREE_LIST
-	  && TREE_TYPE (value_binding) == error_mark_node)
-	/* NAME is ambiguous.  */
-	;
-      else if (BASELINK_P (value_binding))
-	/* NAME is some overloaded functions.  */
-	value_binding = BASELINK_FUNCTIONS (value_binding);
-    }
 
   /* If we found either a type binding or a value binding, create a
      new binding object.  */
@@ -9136,9 +9114,12 @@ maybe_save_operator_binding (tree e)
   tree op_attr = lookup_attribute (op_bind_attrname, attributes);
   if (!op_attr)
     {
+      tree *ap = &DECL_ATTRIBUTES (cfn);
+      while (*ap && ATTR_IS_DEPENDENT (*ap))
+	ap = &TREE_CHAIN (*ap);
       op_attr = tree_cons (get_identifier (op_bind_attrname),
-			   NULL_TREE, attributes);
-      DECL_ATTRIBUTES (cfn) = op_attr;
+			   NULL_TREE, *ap);
+      *ap = op_attr;
     }
 
   tree op_bind = purpose_member (fnname, TREE_VALUE (op_attr));

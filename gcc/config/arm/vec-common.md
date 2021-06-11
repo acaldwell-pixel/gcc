@@ -208,9 +208,9 @@
   "ARM_HAVE_<MODE>_ARITH && !TARGET_REALLY_IWMMXT"
 )
 
-(define_expand "neg<mode>2"
+(define_expand "<absneg_str><mode>2"
   [(set (match_operand:VDQWH 0 "s_register_operand" "")
-	(neg:VDQWH (match_operand:VDQWH 1 "s_register_operand" "")))]
+	(ABSNEG:VDQWH (match_operand:VDQWH 1 "s_register_operand" "")))]
   "ARM_HAVE_<MODE>_ARITH && !TARGET_REALLY_IWMMXT"
 )
 
@@ -565,3 +565,70 @@
 
   DONE;
 })
+
+(define_expand "avg<mode>3_floor"
+  [(match_operand:MVE_2 0 "s_register_operand")
+   (match_operand:MVE_2 1 "s_register_operand")
+   (match_operand:MVE_2 2 "s_register_operand")]
+  "ARM_HAVE_<MODE>_ARITH"
+{
+  if (TARGET_HAVE_MVE)
+    emit_insn (gen_mve_vhaddq (VHADDQ_S, <MODE>mode,
+			       operands[0], operands[1], operands[2]));
+  else
+    emit_insn (gen_neon_vhadd (UNSPEC_VHADD_S, UNSPEC_VHADD_S, <MODE>mode,
+			       operands[0], operands[1], operands[2]));
+  DONE;
+})
+
+(define_expand "uavg<mode>3_floor"
+  [(match_operand:MVE_2 0 "s_register_operand")
+   (match_operand:MVE_2 1 "s_register_operand")
+   (match_operand:MVE_2 2 "s_register_operand")]
+  "ARM_HAVE_<MODE>_ARITH"
+{
+  if (TARGET_HAVE_MVE)
+    emit_insn (gen_mve_vhaddq (VHADDQ_U, <MODE>mode,
+			       operands[0], operands[1], operands[2]));
+  else
+    emit_insn (gen_neon_vhadd (UNSPEC_VHADD_U, UNSPEC_VHADD_U, <MODE>mode,
+			       operands[0], operands[1], operands[2]));
+  DONE;
+})
+
+(define_expand "avg<mode>3_ceil"
+  [(match_operand:MVE_2 0 "s_register_operand")
+   (match_operand:MVE_2 1 "s_register_operand")
+   (match_operand:MVE_2 2 "s_register_operand")]
+  "ARM_HAVE_<MODE>_ARITH"
+{
+  if (TARGET_HAVE_MVE)
+    emit_insn (gen_mve_vrhaddq (VRHADDQ_S, <MODE>mode,
+				operands[0], operands[1], operands[2]));
+  else
+    emit_insn (gen_neon_vhadd (UNSPEC_VRHADD_S, UNSPEC_VRHADD_S, <MODE>mode,
+			       operands[0], operands[1], operands[2]));
+  DONE;
+})
+
+(define_expand "uavg<mode>3_ceil"
+  [(match_operand:MVE_2 0 "s_register_operand")
+   (match_operand:MVE_2 1 "s_register_operand")
+   (match_operand:MVE_2 2 "s_register_operand")]
+  "ARM_HAVE_<MODE>_ARITH"
+{
+  if (TARGET_HAVE_MVE)
+    emit_insn (gen_mve_vrhaddq (VRHADDQ_U, <MODE>mode,
+				operands[0], operands[1], operands[2]));
+  else
+    emit_insn (gen_neon_vhadd (UNSPEC_VRHADD_U, UNSPEC_VRHADD_U, <MODE>mode,
+			       operands[0], operands[1], operands[2]));
+  DONE;
+})
+
+(define_expand "clz<mode>2"
+ [(set (match_operand:VDQIW 0 "s_register_operand")
+       (clz:VDQIW (match_operand:VDQIW 1 "s_register_operand")))]
+  "ARM_HAVE_<MODE>_ARITH
+   && !TARGET_REALLY_IWMMXT"
+)

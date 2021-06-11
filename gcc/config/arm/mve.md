@@ -269,8 +269,7 @@
 (define_insn "mve_vabsq_f<mode>"
   [
    (set (match_operand:MVE_0 0 "s_register_operand" "=w")
-	(unspec:MVE_0 [(match_operand:MVE_0 1 "s_register_operand" "w")]
-	 VABSQ_F))
+	(abs:MVE_0 (match_operand:MVE_0 1 "s_register_operand" "w")))
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vabs.f%#<V_sz_elem>  %q0, %q1"
@@ -436,16 +435,22 @@
 ;;
 ;; [vclzq_u, vclzq_s])
 ;;
-(define_insn "mve_vclzq_<supf><mode>"
+(define_insn "@mve_vclzq_s<mode>"
   [
    (set (match_operand:MVE_2 0 "s_register_operand" "=w")
-	(unspec:MVE_2 [(match_operand:MVE_2 1 "s_register_operand" "w")]
-	 VCLZQ))
+	(clz:MVE_2 (match_operand:MVE_2 1 "s_register_operand" "w")))
   ]
   "TARGET_HAVE_MVE"
   "vclz.i%#<V_sz_elem>  %q0, %q1"
   [(set_attr "type" "mve_move")
 ])
+(define_expand "mve_vclzq_u<mode>"
+  [
+   (set (match_operand:MVE_2 0 "s_register_operand")
+	(clz:MVE_2 (match_operand:MVE_2 1 "s_register_operand")))
+  ]
+  "TARGET_HAVE_MVE"
+)
 
 ;;
 ;; [vclsq_s])
@@ -481,8 +486,7 @@
 (define_insn "mve_vabsq_s<mode>"
   [
    (set (match_operand:MVE_2 0 "s_register_operand" "=w")
-	(unspec:MVE_2 [(match_operand:MVE_2 1 "s_register_operand" "w")]
-	 VABSQ_S))
+	(abs:MVE_2 (match_operand:MVE_2 1 "s_register_operand" "w")))
   ]
   "TARGET_HAVE_MVE"
   "vabs.s%#<V_sz_elem>\t%q0, %q1"
@@ -1032,7 +1036,7 @@
 ;;
 ;; [vhaddq_s, vhaddq_u])
 ;;
-(define_insn "mve_vhaddq_<supf><mode>"
+(define_insn "@mve_vhaddq_<supf><mode>"
   [
    (set (match_operand:MVE_2 0 "s_register_operand" "=w")
 	(unspec:MVE_2 [(match_operand:MVE_2 1 "s_register_operand" "w")
@@ -1654,7 +1658,7 @@
 ;;
 ;; [vrhaddq_s, vrhaddq_u])
 ;;
-(define_insn "mve_vrhaddq_<supf><mode>"
+(define_insn "@mve_vrhaddq_<supf><mode>"
   [
    (set (match_operand:MVE_2 0 "s_register_operand" "=w")
 	(unspec:MVE_2 [(match_operand:MVE_2 1 "s_register_operand" "w")

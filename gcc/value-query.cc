@@ -36,9 +36,9 @@ along with GCC; see the file COPYING3.  If not see
 // value_query default methods.
 
 tree
-value_query::value_on_edge (edge, tree name)
+value_query::value_on_edge (edge, tree expr)
 {
-  return value_of_expr (name);
+  return value_of_expr (expr);
 }
 
 tree
@@ -57,9 +57,9 @@ value_query::value_of_stmt (gimple *stmt, tree name)
 // range_query default methods.
 
 bool
-range_query::range_on_edge (irange &r, edge, tree name)
+range_query::range_on_edge (irange &r, edge, tree expr)
 {
-  return range_of_expr (r, name);
+  return range_of_expr (r, expr);
 }
 
 bool
@@ -76,20 +76,20 @@ range_query::range_of_stmt (irange &r, gimple *stmt, tree name)
 }
 
 tree
-range_query::value_of_expr (tree name, gimple *stmt)
+range_query::value_of_expr (tree expr, gimple *stmt)
 {
   tree t;
   int_range_max r;
 
-  if (!irange::supports_type_p (TREE_TYPE (name)))
+  if (!irange::supports_type_p (TREE_TYPE (expr)))
     return NULL_TREE;
 
-  if (range_of_expr (r, name, stmt))
+  if (range_of_expr (r, expr, stmt))
     {
       // A constant used in an unreachable block oftens returns as UNDEFINED.
       // If the result is undefined, check the global value for a constant.
       if (r.undefined_p ())
-	range_of_expr (r, name);
+	range_of_expr (r, expr);
       if (r.singleton_p (&t))
 	return t;
     }
@@ -97,19 +97,19 @@ range_query::value_of_expr (tree name, gimple *stmt)
 }
 
 tree
-range_query::value_on_edge (edge e, tree name)
+range_query::value_on_edge (edge e, tree expr)
 {
   tree t;
   int_range_max r;
 
-  if (!irange::supports_type_p (TREE_TYPE (name)))
+  if (!irange::supports_type_p (TREE_TYPE (expr)))
     return NULL_TREE;
-  if (range_on_edge (r, e, name))
+  if (range_on_edge (r, e, expr))
     {
       // A constant used in an unreachable block oftens returns as UNDEFINED.
       // If the result is undefined, check the global value for a constant.
       if (r.undefined_p ())
-	range_of_expr (r, name);
+	range_of_expr (r, expr);
       if (r.singleton_p (&t))
 	return t;
     }
@@ -182,6 +182,86 @@ range_query::~range_query ()
   delete equiv_alloc;
 }
 
+// Return a range in R for the tree EXPR.  Return true if a range is
+// representable, and UNDEFINED/false if not.
+
+bool
+range_query::get_tree_range (irange &r, tree expr, gimple *stmt)
+{
+  tree type;
+  if (TYPE_P (expr))
+    type = expr;
+  else
+    type = TREE_TYPE (expr);
+
+  if (!irange::supports_type_p (type))
+    {
+      r.set_undefined ();
+      return false;
+    }
+  if (expr == type)
+    {
+      r.set_varying (type);
+      return true;
+    }
+  switch (TREE_CODE (expr))
+    {
+    case INTEGER_CST:
+      if (TREE_OVERFLOW_P (expr))
+	expr = drop_tree_overflow (expr);
+      r.set (expr, expr);
+      return true;
+
+    case SSA_NAME:
+      r = gimple_range_global (expr);
+      return true;
+
+    case ADDR_EXPR:
+      {
+	// Handle &var which can show up in phi arguments.
+	bool ov;
+	if (tree_single_nonzero_warnv_p (expr, &ov))
+	  {
+	    r = range_nonzero (type);
+	    return true;
+	  }
+	break;
+      }
+
+    default:
+      break;
+    }
+  if (BINARY_CLASS_P (expr))
+    {
+      range_operator *op = range_op_handler (TREE_CODE (expr), type);
+      if (op)
+	{
+	  int_range_max r0, r1;
+	  range_of_expr (r0, TREE_OPERAND (expr, 0), stmt);
+	  range_of_expr (r1, TREE_OPERAND (expr, 1), stmt);
+	  op->fold_range (r, type, r0, r1);
+	}
+      else
+	r.set_varying (type);
+      return true;
+    }
+  if (UNARY_CLASS_P (expr))
+    {
+      range_operator *op = range_op_handler (TREE_CODE (expr), type);
+      if (op)
+	{
+	  int_range_max r0;
+	  range_of_expr (r0, TREE_OPERAND (expr, 0), stmt);
+	  op->fold_range (r, type, r0, int_range<1> (type));
+	}
+      else
+	r.set_varying (type);
+      return true;
+    }
+  r.set_varying (type);
+  return true;
+}
+
 // Return the range for NAME from SSA_NAME_RANGE_INFO.
 
 static inline void
@@ -222,6 +302,45 @@ get_ssa_name_ptr_info_nonnull (const_tree name)
      and pt.escaped may also has to be considered before
      deciding that pointer cannot point to NULL.  */
   return !pi->pt.null;
+}
+
+// Update the global range for NAME into the SSA_RANGE_NAME_INFO and
+// SSA_NAME_PTR_INFO fields.  Return TRUE if the range for NAME was
+// updated.
+
+bool
+update_global_range (irange &r, tree name)
+{
+  tree type = TREE_TYPE (name);
+
+  if (r.undefined_p () || r.varying_p ())
+    return false;
+
+  if (INTEGRAL_TYPE_P (type))
+    {
+      // If a global range already exists, incorporate it.
+      if (SSA_NAME_RANGE_INFO (name))
+	{
+	  value_range glob;
+	  get_ssa_name_range_info (glob, name);
+	  r.intersect (glob);
+	}
+      if (r.undefined_p ())
+	return false;
+
+      value_range vr = r;
+      set_range_info (name, vr);
+      return true;
+    }
+  else if (POINTER_TYPE_P (type))
+    {
+      if (r.nonzero_p ())
+	{
+	  set_ptr_nonnull (name);
+	  return true;
+	}
+    }
+  return false;
 }
 
 // Return the legacy global range for NAME if it has one, otherwise
@@ -316,12 +435,12 @@ get_global_range_query ()
 }
 
 bool
-global_range_query::range_of_expr (irange &r, tree expr, gimple *)
+global_range_query::range_of_expr (irange &r, tree expr, gimple *stmt)
 {
   tree type = TREE_TYPE (expr);
 
   if (!irange::supports_type_p (type) || !gimple_range_ssa_p (expr))
-    return get_tree_range (r, expr);
+    return get_tree_range (r, expr, stmt);
 
   get_range_global (r, expr);
 

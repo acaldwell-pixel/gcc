@@ -324,6 +324,7 @@ Andrew Benson					<abensonca@gmail.com>
 Daniel Berlin					<dberlin@dberlin.org>
 Pat Bernardi					<bernardi@adacore.com>
 Jan Beulich					<jbeulich@novell.com>
+Indu Bhagat					<indu.bhagat@oracle.com>
 David Billinghurst				<David.Billinghurst@riotinto.com>
 Tomas Bily					<tbily@suse.cz>
 Laurynas Biveinis				<laurynas.biveinis@gmail.com>
@@ -684,3 +685,14 @@ Josef Zlomek					<josef.zlomek@email.cz>
 James Dennett					<jdennett@acm.org>
 Christian Ehrhardt				<ehrhardt@mathematik.uni-ulm.de>
 Dara Hazeghi					<dhazeghi@yahoo.com>
+
+			Contributing under the DCO
+
+By adding your name and email to this section, you certify that all your
+subsequent contributions to GCC are made under the terms of the Developer's
+Certificate of Origin Version 1.1.  See https://gcc.gnu.org/dco.html for more
+information.
+
+
+ Jeff Law					<jeffreyalaw@gmail.com>
+ Jeff Law					<jlaw@tachyum.com>

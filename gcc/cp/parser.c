@@ -4378,8 +4378,8 @@ cp_parser_string_literal (cp_parser *parser, bool translate, bool wide_ok,
 		  rich_location rich_loc (line_table, tok->location);
 		  rich_loc.add_range (last_tok_loc);
 		  error_at (&rich_loc,
-			    "unsupported non-standard concatenation "
-			    "of string literals");
+			    "concatenation of string literals with "
+			    "conflicting encoding prefixes");
 		}
 	    }
 
@@ -7295,6 +7295,7 @@ cp_parser_postfix_expression (cp_parser *parser, bool address_p, bool cast_p,
 
     case RID_ADDRESSOF:
     case RID_BUILTIN_SHUFFLE:
+    case RID_BUILTIN_SHUFFLEVECTOR:
     case RID_BUILTIN_LAUNDER:
       {
 	vec<tree, va_gc> *vec;
@@ -7354,6 +7355,20 @@ cp_parser_postfix_expression (cp_parser *parser, bool address_p, bool cast_p,
 		error_at (loc, "wrong number of arguments to "
 			       "%<__builtin_shuffle%>");
 		postfix_expression = error_mark_node;
+	      }
+	    break;
+
+	  case RID_BUILTIN_SHUFFLEVECTOR:
+	    if (vec->length () < 3)
+	      {
+		error_at (loc, "wrong number of arguments to "
+			       "%<__builtin_shufflevector%>");
+		postfix_expression = error_mark_node;
+	      }
+	    else
+	      {
+		postfix_expression
+		  = build_x_shufflevector (loc, vec, tf_warning_or_error);
 	      }
 	    break;
 
@@ -10887,6 +10902,11 @@ cp_parser_lambda_expression (cp_parser* parser)
     bool discarded = in_discarded_stmt;
     in_discarded_stmt = 0;
 
+    /* Similarly the body of a lambda in immediate function context is not
+       in immediate function context.  */
+    bool save_in_consteval_if_p = in_consteval_if_p;
+    in_consteval_if_p = false;
+
     /* By virtue of defining a local class, a lambda expression has access to
        the private variables of enclosing classes.  */
 
@@ -10917,6 +10937,7 @@ cp_parser_lambda_expression (cp_parser* parser)
 
     finish_struct (type, /*attributes=*/NULL_TREE);
 
+    in_consteval_if_p = save_in_consteval_if_p;
     in_discarded_stmt = discarded;
 
     parser->num_template_parameter_lists = saved_num_template_parameter_lists;
@@ -12308,6 +12329,102 @@ cp_parser_selection_statement (cp_parser* parser, bool *if_p,
 	      pedwarn (tok->location, OPT_Wc__17_extensions,
 		       "%<if constexpr%> only available with "
 		       "%<-std=c++17%> or %<-std=gnu++17%>");
+	  }
+	int ce = 0;
+	if (keyword == RID_IF && !cx)
+	  {
+	    if (cp_lexer_next_token_is_keyword (parser->lexer,
+						RID_CONSTEVAL))
+	      ce = 1;
+	    else if (cp_lexer_next_token_is (parser->lexer, CPP_NOT)
+		     && cp_lexer_nth_token_is_keyword (parser->lexer, 2,
+						       RID_CONSTEVAL))
+	      {
+		ce = -1;
+		cp_lexer_consume_token (parser->lexer);
+	      }
+	  }
+	if (ce)
+	  {
+	    cp_token *tok = cp_lexer_consume_token (parser->lexer);
+	    if (cxx_dialect < cxx23)
+	      pedwarn (tok->location, OPT_Wc__23_extensions,
+		       "%<if consteval%> only available with "
+		       "%<-std=c++2b%> or %<-std=gnu++2b%>");
+
+	    bool save_in_consteval_if_p = in_consteval_if_p;
+	    statement = begin_if_stmt ();
+	    IF_STMT_CONSTEVAL_P (statement) = true;
+	    condition = finish_if_stmt_cond (boolean_false_node, statement);
+
+	    gcc_rich_location richloc = tok->location;
+	    bool non_compound_stmt_p = false;
+	    if (cp_lexer_next_token_is_not (parser->lexer, CPP_OPEN_BRACE))
+	      {
+		non_compound_stmt_p = true;
+		richloc.add_fixit_insert_after (tok->location, "{");
+	      }
+
+	    in_consteval_if_p |= ce > 0;
+	    cp_parser_implicitly_scoped_statement (parser, NULL, guard_tinfo);
+
+	    if (non_compound_stmt_p)
+	      {
+		location_t before_loc
+		  = cp_lexer_peek_token (parser->lexer)->location;
+		richloc.add_fixit_insert_before (before_loc, "}");
+		error_at (&richloc,
+			  "%<if consteval%> requires compound statement");
+		non_compound_stmt_p = false;
+	      }
+
+	    finish_then_clause (statement);
+
+	    /* If the next token is `else', parse the else-clause.  */
+	    if (cp_lexer_next_token_is_keyword (parser->lexer,
+						RID_ELSE))
+	      {
+		cp_token *else_tok = cp_lexer_peek_token (parser->lexer);
+		gcc_rich_location else_richloc = else_tok->location;
+		guard_tinfo = get_token_indent_info (else_tok);
+		/* Consume the `else' keyword.  */
+		cp_lexer_consume_token (parser->lexer);
+
+		begin_else_clause (statement);
+
+		if (cp_lexer_next_token_is_not (parser->lexer, CPP_OPEN_BRACE))
+		  {
+		    non_compound_stmt_p = true;
+		    else_richloc.add_fixit_insert_after (else_tok->location,
+							 "{");
+		  }
+
+		in_consteval_if_p = save_in_consteval_if_p | (ce < 0);
+		cp_parser_implicitly_scoped_statement (parser, NULL,
+						       guard_tinfo);
+
+		if (non_compound_stmt_p)
+		  {
+		    location_t before_loc
+		      = cp_lexer_peek_token (parser->lexer)->location;
+		    else_richloc.add_fixit_insert_before (before_loc, "}");
+		    error_at (&else_richloc,
+			      "%<if consteval%> requires compound statement");
+		  }
+
+		finish_else_clause (statement);
+	      }
+
+	    in_consteval_if_p = save_in_consteval_if_p;
+	    if (ce < 0)
+	      {
+		std::swap (THEN_CLAUSE (statement), ELSE_CLAUSE (statement));
+		if (THEN_CLAUSE (statement) == NULL_TREE)
+		  THEN_CLAUSE (statement) = build_empty_stmt (tok->location);
+	      }
+
+	    finish_if_stmt (statement);
+	    return statement;
 	  }
 
 	/* Look for the `('.  */
@@ -29490,6 +29607,19 @@ cp_parser_lookup_name (cp_parser *parser, tree name,
   if (!decl || decl == error_mark_node)
     return error_mark_node;
 
+  /* If we have resolved the name of a member declaration, check to
+     see if the declaration is accessible.  When the name resolves to
+     set of overloaded functions, accessibility is checked when
+     overload resolution is done.  If we have a TREE_LIST, then the lookup
+     is either ambiguous or it found multiple injected-class-names, the
+     accessibility of which is trivially satisfied.
+
+     During an explicit instantiation, access is not checked at all,
+     as per [temp.explicit].  */
+  if (DECL_P (decl))
+    check_accessibility_of_qualified_id (decl, object_type, parser->scope,
+					 tf_warning_or_error);
+
   /* Pull out the template from an injected-class-name (or multiple).  */
   if (is_template)
     decl = maybe_get_template_decl_from_type_decl (decl);
@@ -29515,17 +29645,6 @@ cp_parser_lookup_name (cp_parser *parser, tree name,
 	      || TREE_CODE (decl) == SCOPE_REF
 	      || TREE_CODE (decl) == UNBOUND_CLASS_TEMPLATE
 	      || BASELINK_P (decl));
-
-  /* If we have resolved the name of a member declaration, check to
-     see if the declaration is accessible.  When the name resolves to
-     set of overloaded functions, accessibility is checked when
-     overload resolution is done.
-
-     During an explicit instantiation, access is not checked at all,
-     as per [temp.explicit].  */
-  if (DECL_P (decl))
-    check_accessibility_of_qualified_id (decl, object_type, parser->scope,
-					 tf_warning_or_error);
 
   maybe_record_typedef_use (decl);
 
@@ -42218,6 +42337,7 @@ cp_parser_omp_target (cp_parser *parser, cp_token *pragma_tok,
 	  tree stmt = make_node (OMP_TARGET);
 	  TREE_TYPE (stmt) = void_type_node;
 	  OMP_TARGET_CLAUSES (stmt) = cclauses[C_OMP_CLAUSE_SPLIT_TARGET];
+	  c_omp_adjust_map_clauses (OMP_TARGET_CLAUSES (stmt), true);
 	  OMP_TARGET_BODY (stmt) = body;
 	  OMP_TARGET_COMBINED (stmt) = 1;
 	  SET_EXPR_LOCATION (stmt, pragma_tok->location);
